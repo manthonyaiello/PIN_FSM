@@ -105,7 +105,7 @@ node imported config_channel() returns (message : config_type);
 --
 node initialize(
     -- Prior values of our variables
-    pre_vars : vars_vector_type;
+    _ : vars_vector_type;
 ) returns (
     -- Transition target
     transition : states_type;
@@ -149,18 +149,9 @@ node setup(
     vars : vars_vector_type;
 );
 let
-    vars = vars_vector_type {
-        pin          = pre_vars.config.pin;
-        max_retries  = pre_vars.config.max_retries;
-        system_state = initialized;
-
-        -- frame condition
-        auth_state   = pre_vars.auth_state;
-        retries      = pre_vars.retries;
-        request      = pre_vars.request;
-        config       = pre_vars.config;
-        use_upstream = pre_vars.use_upstream;
-    };
+    vars = (((pre_vars with .pin          = pre_vars.config.pin)
+                       with .max_retries  = pre_vars.config.max_retries)
+                       with .system_state = initialized);
 
     transition = locked_state;
 tel;
@@ -180,18 +171,9 @@ node locked(
     vars  : vars_vector_type;
 );
 let
-    vars = vars_vector_type {
-        auth_state = unauthenticated;
-        request    = user_channel();
-        retries    = pre_vars.retries + 1;
-
-        -- frame condition
-        system_state = pre_vars.system_state;
-        pin          = pre_vars.pin;
-        max_retries  = pre_vars.max_retries;
-        config       = pre_vars.config;
-        use_upstream = pre_vars.use_upstream;
-    };
+    vars = (((pre_vars with .auth_state = unauthenticated)
+                       with .request    = user_channel())
+                       with .retries    = pre_vars.retries + 1);
 
     transition = if not vars.request.valid then
                      error_state
@@ -240,18 +222,9 @@ node authenticated(
     vars : vars_vector_type;
 );
 let
-    vars = vars_vector_type {
-        auth_state = authenticated;
-        retries    = 0;
-        request    = user_channel();
-
-        -- frame condition
-        system_state = pre_vars.system_state;
-        pin          = pre_vars.pin;
-        max_retries  = pre_vars.max_retries;
-        config       = pre_vars.config;
-        use_upstream = pre_vars.use_upstream;
-    };
+    vars = (((pre_vars with .auth_state = authenticated)
+                       with .retries    = 0)
+                       with .request    = user_channel());
 
     transition = if not vars.request.valid then
                      error_state
@@ -283,19 +256,7 @@ node update(
     vars : vars_vector_type;
 );
 let
-    vars = vars_vector_type {
-        pin = pre_vars.request.pin;
-
-        -- frame condition
-        system_state = pre_vars.system_state;
-        auth_state   = pre_vars.auth_state;
-        retries      = pre_vars.retries;
-        max_retries  = pre_vars.max_retries;
-        request      = pre_vars.request;
-        config       = pre_vars.config;
-        use_upstream = pre_vars.use_upstream;
-    };
-
+    vars       = (pre_vars with .pin = pre_vars.request.pin);
     transition = authenticated_state;
 tel;
 
@@ -314,19 +275,7 @@ node forwarding(
     vars : vars_vector_type;
 );
 let
-    vars = vars_vector_type {
-        use_upstream = true;
-
-        -- frame condition
-        system_state = pre_vars.system_state;
-        auth_state   = pre_vars.auth_state;
-        pin          = pre_vars.pin;
-        retries      = pre_vars.retries;
-        max_retries  = pre_vars.max_retries;
-        request      = pre_vars.request;
-        config       = pre_vars.config;
-    };
-
+    vars       = (pre_vars with .use_upstream = true);
     transition = authenticated_state;
 tel;
 
